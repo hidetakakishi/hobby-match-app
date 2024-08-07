@@ -13,7 +13,9 @@ use Illuminate\Validation\Rules;
 use App\Models\User;
 use App\Models\Token;
 use App\Mail\AuthMail;
+use App\Mail\ResetPasswordMail;
 use DateTime;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
@@ -56,13 +58,13 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
-            //2. トークンを発行
+            //トークンを発行
             $now = new DateTime();
             $now->format("Y-m-d H:i:s");
             //有効期限を計算(30分とした)
             $expire_at = $now->modify('+30 minutes');
 
-            //3. トークンをDBに保存
+            //トークンをDBに保存
             $uniqId = uniqid('', true);
             Token::create([
                 'token' => $uniqId,
@@ -73,7 +75,7 @@ class AuthController extends Controller
 
             //メールに記載する認証用URlを組み立てている(認証用ページURL+トークン)。
             $url = $request->getSchemeAndHttpHost() . "/auth/create-verify/" . $uniqId;
-            //4. メールを送信
+            //メールを送信
             Mail::to($request->email)
                 ->send(new AuthMail($url));
         });
@@ -90,12 +92,12 @@ class AuthController extends Controller
 
     function createVerify($token, Request $request)
     {
-        //6. ユーザから送信されたトークンを検索
+        //ユーザから送信されたトークンを検索
         $data = Token::where([
             'token' => $token
         ])->first();
 
-        //8. トークンチェック
+        //トークンチェック
         if (is_null($data)) {
             //DBから値が返ってこないのでトークンが間違っている、チェックNG
             return redirect('/')->with('message', 'メールアドレス認証に失敗しました。URLを確認してもう一度やり直してください。');
@@ -104,7 +106,7 @@ class AuthController extends Controller
             return redirect('/')->with('message', 'このメールアドレスはすでに認証されています。');
         }
 
-        //9. 認証処理(有効なトークンだった場合はフラグを認証済み(true)に更新)
+        //認証処理(有効なトークンだった場合はフラグを認証済み(true)に更新)
         $now = new DateTime();
         $expire_date = new DateTime($data->expire_at);
         if ($now < $expire_date) {
@@ -113,7 +115,7 @@ class AuthController extends Controller
                 $data->auth_flag = true;
                 $data->update();
 
-                //9. 認証処理(ユーザテーブルのメールアドレス認証フラグ立てる)
+                //認証処理(ユーザテーブルのメールアドレス認証フラグ立てる)
                 $user = User::where([
                     'email' => $data->email
                 ])->first();
@@ -121,14 +123,13 @@ class AuthController extends Controller
                 $user->email_auth_flag = true;
                 $user->update();
 
-                //10. ログイン状態にしてユーザトップページへリダイレクト
-                // $request->session()->put('logind', 'true');
-                // $request->session()->put('id', $user->id);
-                //return redirect('/user/'.$user->id);
+                //ログイン状態にしてユーザトップページへリダイレクト
+                event(new Registered($user));
+                Auth::login($user);
             });
-            return view('mypage');
+            return redirect('/mypage');
         } else {
-            DB::transaction(function () use ($token,$data) {
+            DB::transaction(function () use ($token, $data) {
                 //有効期限が切れている、チェックNG
                 //有効期限の切れたトークンデータ、ユーザデータはもう二度と認証できないので削除
                 Token::where([
@@ -168,5 +169,113 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    function resetPassword(Request $request)
+    {
+        return view('reset_password');
+    }
+
+    function sendResetPasswordEmail(Request $request)
+    {
+        $user = User::where([
+            'email' => $request->email
+        ])->first();
+
+        if ($user == null) {
+            redirect('/auth/reset-password')->with('message', 'このパスワードは使用されていません。');
+        }
+
+        DB::transaction(function () use ($request) {
+            //トークンを発行
+            $now = new DateTime();
+            $now->format("Y-m-d H:i:s");
+            //有効期限を計算(30分とした)
+            $expire_at = $now->modify('+30 minutes');
+
+            //トークンをDBに保存
+            $uniqId = uniqid('', true);
+            Token::create([
+                'token' => $uniqId,
+                'email' => $request->email,
+                'auth_flag' => 0,
+                'expire_at' => $expire_at
+            ]);
+
+            //メールに記載する認証用URlを組み立てている(認証用ページURL+トークン)。
+            $url = $request->getSchemeAndHttpHost() . "/auth/create-password/" . $uniqId;
+            //メールを送信
+            Mail::to($request->email)
+                ->send(new ResetPasswordMail($url));
+        });
+
+        return view('reset_password_verify')->with('email', $request->email);
+    }
+
+    function createPassword($token, Request $request)
+    {
+        //ユーザから送信されたトークンを検索
+        $data = Token::where([
+            'token' => $token
+        ])->first();
+
+        //トークンチェック
+        if (is_null($data)) {
+            //DBから値が返ってこないのでトークンが間違っている、チェックNG
+            return redirect('/')->with('message', 'メールアドレス認証に失敗しました。URLを確認してもう一度やり直してください。');
+        } else if ($data->auth_flag) {
+            //検索して見つかったトークンデータの認証フラグが既に立っている(=認証済み)、チェックNG
+            return redirect('/')->with('message', 'このメールアドレスはすでに認証されています。');
+        }
+
+        $now = new DateTime();
+        $expire_date = new DateTime($data->expire_at);
+        if ($now < $expire_date) {
+            return view('create_password')->with('token', $token);
+        } else {
+            DB::transaction(function () use ($token) {
+                //有効期限が切れている、チェックNG
+                Token::where([
+                    'token' => $token
+                ])->delete();
+            });
+            return redirect('/')->with('message', '認証URLの有効期限が切れています。最初からもう一度やり直してください。');
+        }
+    }
+
+    function createPasswordVerify($token, Request $request)
+    {
+        //ユーザー情報バリデーション
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'password' => ['required', 'confirmed', Rules\Password::defaults()]
+            ]
+        );
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+
+        //ユーザから送信されたトークンを検索
+        $data = Token::where([
+            'token' => $token
+        ])->first();
+        $user = User::where([
+            'email' => $data->email
+        ])->first();
+
+        DB::transaction(function () use ($data, $user, $request) {
+            $data->auth_flag = true;
+            $data->update();
+
+            $user->password = Hash::make($request->password);
+            $user->update();
+
+            event(new Registered($user));
+            Auth::login($user);
+        });
+
+        return view('create_password_verify');
     }
 }

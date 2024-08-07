@@ -144,41 +144,21 @@
 <body class="container">
     <div class="login-container">
         <div class="login-form">
-            <h2>Login</h2>
-            <form method="POST" action="{{ route('auth.signin') }}">
+            <h2>Password Create</h2>
+            <form method="POST" action="{{ route('auth.create.password.verify', ['token' => $token]) }}">
                 @csrf
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required autofocus>
-                </div>
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" required>
                 </div>
                 <div class="form-group">
-                    <button type="submit" class="btn">Login</button>
+                    <label for="password">Password confirmation</label>
+                    <input type="password" id="password-confirmation" name="password_confirmation" required>
                 </div>
-                <a class="forgot-password" href="{{ route('auth.index') }}">
-                    Account create
-                </a>
+                <div class="form-group">
+                    <button type="submit" class="btn">create</button>
+                </div>
             </form>
-            <div class="google-login">
-                <button class="google-btn">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png"
-                        class="google-icon">
-                    Sign in with Google
-                </button>
-            </div>
-            <div>
-                <a href="#">
-                    <img style="height:40px;margin-top:10px;" src="{{ asset('storage/btn_login_base.png') }}">
-                </a>
-            </div>
-            @if (Route::has('auth.reset.password'))
-                <a class="forgot-password" href="{{ route('auth.reset.password') }}">
-                    Forgot Your Password?
-                </a>
-            @endif
             @if ($errors->any())
                 <div class="alert alert-danger">
                     <ul>

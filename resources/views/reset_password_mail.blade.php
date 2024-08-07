@@ -19,7 +19,7 @@
 <body class="container">
     <div class="container">
         <div class="alert alert-success" role="alert">
-            下記URLより、アカウントを有効化してください。
+            下記URLより、パスワードを変更してください。
             {{ $url }}
         </div>
     </div>

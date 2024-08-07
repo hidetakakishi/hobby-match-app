@@ -29,7 +29,7 @@ Route::post('/auth/send-reset-password-email', [App\Http\Controllers\AuthControl
 //パスワード登録画面
 Route::get('/auth/create-password/{token}', [App\Http\Controllers\AuthController::class, 'createPassword'])->name('auth.create.password');
 //パスワード登録確認画面
-Route::get('/auth/create-password-verify', [App\Http\Controllers\AuthController::class, 'createPasswordVerify'])->name('auth.create.password.verify');
+Route::post('/auth/create-password-verify/{token}', [App\Http\Controllers\AuthController::class, 'createPasswordVerify'])->name('auth.create.password.verify');
 //ログイン画面
 Route::get('/auth/login', [App\Http\Controllers\AuthController::class, 'login'])->name('login');
 //ログイン処理
