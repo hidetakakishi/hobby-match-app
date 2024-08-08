@@ -163,11 +163,13 @@
                 </a>
             </form>
             <div class="google-login">
-                <button class="google-btn">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png"
-                        class="google-icon">
-                    Sign in with Google
-                </button>
+                <a href="{{ url('login/google') }}">
+                    <button class="google-btn">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png"
+                            class="google-icon">
+                        Sign in with Google
+                    </button>
+                </a>
             </div>
             <div>
                 <a href="#">

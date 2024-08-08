@@ -36,3 +36,7 @@ Route::get('/auth/login', [App\Http\Controllers\AuthController::class, 'login'])
 Route::post('/auth/signin', [App\Http\Controllers\AuthController::class, 'signin'])->name('auth.signin');
 //ログアウト処理
 Route::get('/auth/logout', [App\Http\Controllers\AuthController::class, 'logout'])->name('auth.logout');
+//Googleアカウントでログイン
+Route::get('/login/google', [App\Http\Controllers\AuthController::class, 'redirectToGoogle']);
+//GoogleアカウントコールバックURL
+Route::get('/login/google/callback', [App\Http\Controllers\AuthController::class, 'handleGoogleCallback']);

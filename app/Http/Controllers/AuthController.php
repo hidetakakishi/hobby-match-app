@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Facades\Socialite;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Validation\Rules;
 use App\Models\User;
@@ -15,6 +16,7 @@ use App\Models\Token;
 use App\Mail\AuthMail;
 use App\Mail\ResetPasswordMail;
 use DateTime;
+use Exception;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Log;
 
@@ -277,5 +279,37 @@ class AuthController extends Controller
         });
 
         return view('create_password_verify');
+    }
+
+    public function redirectToGoogle()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        DB::transaction(function () {
+            $user = Socialite::driver('google')->user();
+
+            // ユーザーが既に存在するか確認し、存在しない場合は新規登録
+            // $finduser = User::where('google_id', $user->id)->first();
+            $finduser = User::where('email', $user->email)->first();
+            if ($finduser) {
+                $login = $finduser;
+            } else {
+                $login = User::create([
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'password' => bcrypt('your_default_password') // パスワードは任意
+                ]);
+            }
+
+            // ログイン処理
+            event(new Registered($login));
+            Auth::login($login);
+        });
+
+        // ログイン後にリダイレクトする場所
+        return redirect()->intended('mypage');
     }
 }
