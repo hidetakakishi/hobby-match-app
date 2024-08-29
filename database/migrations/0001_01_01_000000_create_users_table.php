@@ -18,6 +18,19 @@ return new class extends Migration
             $table->tinyInteger('email_auth_flag');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->integer('gender')->nullable(); // 性別
+            $table->integer('age')->nullable(); // 年齢
+            $table->string('url')->nullable(); // URL
+            $table->text('profile')->nullable(); // プロフィール
+            $table->string('profile_image_url')->nullable(); // プロフィール画像URL
+            $table->string('prefecture')->nullable(); // 都道府県
+            for ($i = 1; $i <= 10; $i++) {
+                $table->unsignedTinyInteger('hobbies_id_' . $i)->nullable(); // 趣味ID (1~10まで)
+            }
+            for ($i = 1; $i <= 5; $i++) {
+                $table->string('gallery_image_url_' . $i)->nullable(); // ギャラリー画像URL (1~5まで)
+            }
+            $table->boolean('is_deleted')->default(false); // 削除フラグ
             $table->rememberToken();
             $table->timestamps();
         });
